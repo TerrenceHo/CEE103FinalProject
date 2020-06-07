@@ -1,4 +1,32 @@
-%% Reactor Solver
+%% Solving for First Concentration
+D = 5000;
+U = 100;
+k = 2;
+L = 100;
+cin = 100;
+dx = 5;
+
+[displacement1, concentration1] = reactor_solver(D, U, k, L, cin, dx);
+
+%% Plotting Concentration at each position
+figure(1);
+plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank");
+set(gca,'FontSize',24);
+hold off;
+
+%% More Cases
+% D2 = 2500;
+% U2 = 50;
+% 
+% [displacement2, concentration2] = reactor_solver(D2, U, k, L, cin, dx);
+% [displacement3, concentration3] = reactor_solver(D, U2, k, L, cin, dx);
+
+% TODO: more plots...
+
+%% Reactor Solver Function
 function [xx, yy] = reactor_solver(D, U, k, L, cin, dx)
 % A function to solve the steady state reactor problem
 % Inputs:
@@ -15,31 +43,31 @@ function [xx, yy] = reactor_solver(D, U, k, L, cin, dx)
     b = L;
     N = L/dx;
     function p = reactor_p_func(x)
-    p = U./D;
+    p = U./D.*(ones(size(x)));
     end
     function q = reactor_q_func(x)
-        q = -k./D;
+        q = -k./D.*(ones(size(x)));
     end
     function r = reactor_r_func(x)
         r = 0.*x;
     end
-    function v = ghost_left_func1(x)
-        v = (-U/V)*2*h;
+    function v = ghost_left_func1(x, h)
+        v = (-U/D)*2*h.*(ones(size(x)));
     end
-    function v = ghost_left_func2(x)
-        v = 1;
+    function v = ghost_left_func2(x, h)
+        v = 1.*(ones(size(x)));
     end
-    function v = ghost_left_func_rhs(x)
-        v = (U/D)*2*h*cin;
+    function v = ghost_left_func_rhs(x, h)
+        v = (U/D)*2*h*cin.*(ones(size(x)));
     end
-    function v = ghost_right_func1(x)
-        v = 1;
+    function v = ghost_right_func1(x, h)
+        v = 1.*(ones(size(x)));
     end
-    function v = ghost_right_func2(x)
-        v = 0;
+    function v = ghost_right_func2(x, h)
+        v = 0.*(ones(size(x)));
     end
-    function v = ghost_right_func_rhs(x)
-        v = 0;
+    function v = ghost_right_func_rhs(x, h)
+        v = 0.*(ones(size(x)));
     end
     z = ODEBVP_boundary(@reactor_p_func, @reactor_q_func, @reactor_r_func,... 
         @ghost_left_func1, @ghost_left_func2, @ghost_left_func_rhs,...
@@ -50,7 +78,7 @@ function [xx, yy] = reactor_solver(D, U, k, L, cin, dx)
     yy = z(:,2);
 end
 
-%% Embedded Functions
+%% Custom ODEBVP Solver Function
 function z = ODEBVP_boundary(p_func,q_func,r_func,...
     ghost_left_func1, ghost_left_func2, ghost_left_func_rhs,...
     ghost_right_func1, ghost_right_func2, ghost_right_func_rhs,...
@@ -97,16 +125,16 @@ avec(2:N+1) = -1-(h/2)*pp(2:N+1);
 bvec(1:N+1) = 2+h2*q_func(xx, varargin{:});
 cvec(1:N)   = -1+(h/2)*pp(1:N);
 
-bvec(1) = bvec(1) + -(1+(h/2)*pp(1)).*ghost_left_func1(xx, varargin{:});
-cvec(1) = cvec(1) + -(1+(h/2)*pp(1)).*ghost_left_func2(xx, varargin{:});
+bvec(1) = bvec(1) + -(1+(h/2)*pp(1)).*ghost_left_func1(xx(1), h, varargin{:});
+cvec(1) = cvec(1) + -(1+(h/2)*pp(1)).*ghost_left_func2(xx(1), h, varargin{:});
 
-avec(N+1) = avec(N+1) + ((h/2)*pp(N+1) - 1).*ghost_right_func1(xx, varargin{:});
-bvec(N+1) = bvec(N+1) + ((h/2)*pp(N+1) - 1).*ghost_right_func2(xx, varargin{:});
+avec(N+1) = avec(N+1) + ((h/2)*pp(N+1) - 1).*ghost_right_func1(xx(N+1), h, varargin{:});
+bvec(N+1) = bvec(N+1) + ((h/2)*pp(N+1) - 1).*ghost_right_func2(xx(N+1), h, varargin{:});
 
 % Define the right hand side vector fvec
 fvec = -h2*r_func(xx,varargin{:});
-fvec(1)   = fvec(1)   + (1+(h/2)*pp(1)).*ghost_left_func_rhs(xx, varargin{:});
-fvec(N+1) = fvec(N+1) + -((h/2)*pp(N+1) - 1).*ghost_right_func_rhs(xx, varargin{:});
+fvec(1)   = fvec(1)   + (1+(h/2)*pp(1)).*ghost_left_func_rhs(xx(1), h, varargin{:});
+fvec(N+1) = fvec(N+1) + -((h/2)*pp(N+1) - 1).*ghost_right_func_rhs(xx(N+1), h, varargin{:});
 
 % Solve the tridiagonal system
 yy = tridiag(avec,bvec,cvec,fvec,N+1,0);
@@ -114,6 +142,8 @@ yy = tridiag(avec,bvec,cvec,fvec,N+1,0);
 z = [xx'; yy']';
 
 end % end of function
+
+%% Embedded Functions
 function [x, lambda, delta, ier] = tridiag(l,d,u,b,n,iflag)
 
 % function [x, lambda, delta, ier] = tridiag(l,d,u,b,n,iflag)

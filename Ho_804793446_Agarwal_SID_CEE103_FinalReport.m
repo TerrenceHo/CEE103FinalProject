@@ -18,13 +18,27 @@ set(gca,'FontSize',24);
 hold off;
 
 %% More Cases
-% D2 = 2500;
-% U2 = 50;
-% 
-% [displacement2, concentration2] = reactor_solver(D2, U, k, L, cin, dx);
-% [displacement3, concentration3] = reactor_solver(D, U2, k, L, cin, dx);
+D2 = 2500;
+U2 = 50;
 
-% TODO: more plots...
+[displacement2, concentration2] = reactor_solver(D2, U, k, L, cin, dx);
+[displacement3, concentration3] = reactor_solver(D, U2, k, L, cin, dx);
+
+figure(2);
+plot(displacement2, concentration2,'-o','LineWidth',2); hold on;
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank");
+set(gca,'FontSize',24);
+hold off;
+
+figure(3);
+plot(displacement3, concentration3,'-o','LineWidth',2); hold on;
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank");
+set(gca,'FontSize',24);
+hold off;
 
 %% Reactor Solver Function
 function [xx, yy] = reactor_solver(D, U, k, L, cin, dx)
@@ -37,16 +51,18 @@ function [xx, yy] = reactor_solver(D, U, k, L, cin, dx)
 %   cin: concentration in the inflow
 %   dx: discretization of the length of the reactor
 % Outputs:
-%   z: solution output
+%   xx: xx is an (N+1) column vector of the node points
+%   yy: yy is an (N+1) column vector of the solution values
 
     a = 0;
     b = L;
     N = L/dx;
+    
     function p = reactor_p_func(x)
     p = U./D.*(ones(size(x)));
     end
     function q = reactor_q_func(x)
-        q = -k./D.*(ones(size(x)));
+        q = k./D.*(ones(size(x)));
     end
     function r = reactor_r_func(x)
         r = 0.*x;

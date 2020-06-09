@@ -6,39 +6,52 @@ L = 100;
 cin = 100;
 dx = 5;
 
-[displacement1, concentration1] = reactor_solver(D, U, k, L, cin, dx);
-
-%% Plotting Concentration at each position
-figure(1);
-plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
-xlabel("Position along reactor (m)");
-ylabel("Concentration (mol/L");
-title("Concentration at each position in the tank");
-set(gca,'FontSize',24);
-hold off;
-
-%% More Cases
 D2 = 2500;
 U2 = 50;
 
+% default parameters
+[displacement1, concentration1] = reactor_solver(D, U, k, L, cin, dx);
+
+% varying parameters
 [displacement2, concentration2] = reactor_solver(D2, U, k, L, cin, dx);
 [displacement3, concentration3] = reactor_solver(D, U2, k, L, cin, dx);
 
-figure(2);
+%% Plotting Concentration at each position
+% set this to false if you do not want to generate images
+save_figures = false;
+
+fig1 = figure(1);
+plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank (Baseline)");
+set(gca,'FontSize',17);
+hold off;
+if save_figures == true
+    saveas(fig1,'images/fig1.png')
+end
+
+fig2 = figure(2);
 plot(displacement2, concentration2,'-o','LineWidth',2); hold on;
 xlabel("Position along reactor (m)");
 ylabel("Concentration (mol/L");
-title("Concentration at each position in the tank");
-set(gca,'FontSize',24);
+title("Concentration at each position in the tank (D=2500 m^s/hr)");
+set(gca,'FontSize',17);
 hold off;
+if save_figures == true
+    saveas(fig2,'images/fig2.png')
+end
 
-figure(3);
+fig3 = figure(3);
 plot(displacement3, concentration3,'-o','LineWidth',2); hold on;
 xlabel("Position along reactor (m)");
 ylabel("Concentration (mol/L");
-title("Concentration at each position in the tank");
-set(gca,'FontSize',24);
+title("Concentration at each position in the tank (U=50 m/hr)");
+set(gca,'FontSize',17);
 hold off;
+if save_figures == true
+    saveas(fig3,'images/fig3.png')
+end
 
 %% Reactor Solver Function
 function [xx, yy] = reactor_solver(D, U, k, L, cin, dx)
@@ -102,16 +115,41 @@ function z = ODEBVP_boundary(p_func,q_func,r_func,...
 % A program to solve the two point boundary value problem
 %   y''=p(x)y'+q(x)y+r(x),  a<x<b
 %   y(a)=g1,  y(b)=g2
+% 
+% Rather than take a boundary value, the boundary condition may be
+% formulated as an equation instead. When trying to apply the governing 
+% equation above to boundary nodes, "ghost" nodes are produced. You can 
+% eliminate the ghost nodes with the boundary condition function. This adds
+% extra values to the other nodes for that boundary computation. For
+% example the following is the general governing equation:
+%   -(1+h/2p(x=0))C_-1 + (2+h^2q(x=0))C_0 + (h/2p(x=0) - 1)C_1 = -h^2r(x=0)
+% And take the following as the boundary condition function
+%   c'(x = 0) = 0
+% With the finite difference, 
+%   C_1 - C_-1 = 0, C_1 = C_-1.
+% We can rewrite as C_-1 = C_1 + 0(C_0) + 0. Now we can replace the ghost
+% node C_-1 as a function of the other nodes C_1, C_0, and some constant
+% value. This results in three functions for the left boundary, and three
+% more functions for the right boundary. In this example, ghost_left_func2
+% = 1, ghost_left_func1 = ghost_left_func_rhs = 0, but they can be
+% arbitrary functions. 
+% 
+% Lastly, ghost functions can be dependent on both x (input) and h, as well
+% as any extra variables you desire (varargin).
+% 
 % Input
 %   p, q, r: coefficient functions 
+%   ghost_left_func1: left boundary function addition for the smaller node
+%   ghost_left_func2: left boundary function addition for the bigger node
+%   ghost_left_func_rhs: left boundary function for a constant value
+%   ghost_right_func1: right boundary function addition for the smaller node
+%   ghost_right_func2: right boundary function addition for the bigger node
+%   ghost_right_func_rhs: right boundary function for a constant value
 %   a, b: the end-points of the interval
-%   ga, gb: the prescribed function values at the end-points
 %   N: number of sub-intervals
 % Output
 %   z = [ xx yy ]: xx is an (N+1) column vector of the node points
 %                yy is an (N+1) column vector of the solution values
-% A sample call would be
-%   z=ODEBVP('p','q','r',a,b,ga,gb,100)
 % The user must provide m-files to define the functions p, q and r.
 % 
 % Other MATLAB program called: tridiag.m

@@ -7,21 +7,30 @@ cin = 100;
 dx = 5;
 
 D2 = 2500;
+D3 = 10000;
 U2 = 50;
+U3 = 200;
 
 % default parameters
 [displacement1, concentration1] = reactor_solver(D, U, k, L, cin, dx);
 
-% varying parameters
+% varying D parameter
 [displacement2, concentration2] = reactor_solver(D2, U, k, L, cin, dx);
-[displacement3, concentration3] = reactor_solver(D, U2, k, L, cin, dx);
+[displacement3, concentration3] = reactor_solver(D3, U, k, L, cin, dx);
+
+% varying U parameter
+[displacement4, concentration4] = reactor_solver(D, U2, k, L, cin, dx);
+[displacement5, concentration5] = reactor_solver(D, U3, k, L, cin, dx);
+
 
 %% Plotting Concentration at each position
 % set this to false if you do not want to generate images
-save_figures = false;
+save_figures = true;
 
 fig1 = figure(1);
 plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
+text(L,concentration1(end), "Concentration at 100m: " + string(concentration1(end)),...
+    'VerticalAlignment','top','HorizontalAlignment','right','FontSize', 16);
 xlabel("Position along reactor (m)");
 ylabel("Concentration (mol/L");
 title("Concentration at each position in the tank (Baseline)");
@@ -33,6 +42,8 @@ end
 
 fig2 = figure(2);
 plot(displacement2, concentration2,'-o','LineWidth',2); hold on;
+text(L,concentration2(end-10), sprintf("Concentration at \n100m: ") + string(concentration2(end)),...
+    'VerticalAlignment','top','HorizontalAlignment','right','FontSize', 16);
 xlabel("Position along reactor (m)");
 ylabel("Concentration (mol/L");
 title("Concentration at each position in the tank (D=2500 m^s/hr)");
@@ -43,7 +54,9 @@ if save_figures == true
 end
 
 fig3 = figure(3);
-plot(displacement3, concentration3,'-o','LineWidth',2); hold on;
+plot(displacement4, concentration4,'-o','LineWidth',2); hold on;
+text(L,concentration4(end), "Concentration at 100m: " + string(concentration4(end)),...
+    'VerticalAlignment','top','HorizontalAlignment','right','FontSize', 16);
 xlabel("Position along reactor (m)");
 ylabel("Concentration (mol/L");
 title("Concentration at each position in the tank (U=50 m/hr)");
@@ -51,6 +64,34 @@ set(gca,'FontSize',17);
 hold off;
 if save_figures == true
     saveas(fig3,'images/fig3.png')
+end
+
+fig4 = figure(4);
+plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
+plot(displacement2, concentration2,'-o','LineWidth',2);
+plot(displacement3, concentration3,'-o','LineWidth',2);
+legend("D=5000 m^s/hr", "D=2500 m^s/hr", "D=10000 m^s/hr");
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank (Varying D)");
+set(gca,'FontSize',17);
+hold off;
+if save_figures == true
+    saveas(fig4,'images/fig4.png')
+end
+
+fig5 = figure(5);
+plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
+plot(displacement4, concentration4,'-o','LineWidth',2);
+plot(displacement5, concentration5,'-o','LineWidth',2);
+legend("U=100 m/hr", "U=50 m/hr", "U=200 m/hr");
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank (Varying U)");
+set(gca,'FontSize',17);
+hold off;
+if save_figures == true
+    saveas(fig5,'images/fig5.png')
 end
 
 %% Reactor Solver Function

@@ -1,5 +1,101 @@
+%% Solving for First Concentration
+D = 5000;
+U = 100;
+k = 2;
+L = 100;
+cin = 100;
+dx = 5;
 
-function v = reactor_solver(D, U, k, L, cin, dx)
+D2 = 2500;
+D3 = 10000;
+U2 = 50;
+U3 = 200;
+
+% default parameters
+[displacement1, concentration1] = reactor_solver(D, U, k, L, cin, dx);
+
+% varying D parameter
+[displacement2, concentration2] = reactor_solver(D2, U, k, L, cin, dx);
+[displacement3, concentration3] = reactor_solver(D3, U, k, L, cin, dx);
+
+% varying U parameter
+[displacement4, concentration4] = reactor_solver(D, U2, k, L, cin, dx);
+[displacement5, concentration5] = reactor_solver(D, U3, k, L, cin, dx);
+
+
+%% Plotting Concentration at each position
+% set this to false if you do not want to generate images
+save_figures = true;
+
+fig1 = figure(1);
+plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
+text(L,concentration1(end), "Concentration at 100m: " + string(concentration1(end)),...
+    'VerticalAlignment','top','HorizontalAlignment','right','FontSize', 16);
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank (Baseline)");
+set(gca,'FontSize',17);
+hold off;
+if save_figures == true
+    saveas(fig1,'images/fig1.png')
+end
+
+fig2 = figure(2);
+plot(displacement2, concentration2,'-o','LineWidth',2); hold on;
+text(L,concentration2(end-10), sprintf("Concentration at \n100m: ") + string(concentration2(end)),...
+    'VerticalAlignment','top','HorizontalAlignment','right','FontSize', 16);
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank (D=2500 m^s/hr)");
+set(gca,'FontSize',17);
+hold off;
+if save_figures == true
+    saveas(fig2,'images/fig2.png')
+end
+
+fig3 = figure(3);
+plot(displacement4, concentration4,'-o','LineWidth',2); hold on;
+text(L,concentration4(end), "Concentration at 100m: " + string(concentration4(end)),...
+    'VerticalAlignment','top','HorizontalAlignment','right','FontSize', 16);
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank (U=50 m/hr)");
+set(gca,'FontSize',17);
+hold off;
+if save_figures == true
+    saveas(fig3,'images/fig3.png')
+end
+
+fig4 = figure(4);
+plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
+plot(displacement2, concentration2,'-o','LineWidth',2);
+plot(displacement3, concentration3,'-o','LineWidth',2);
+legend("D=5000 m^s/hr", "D=2500 m^s/hr", "D=10000 m^s/hr");
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank (Varying D)");
+set(gca,'FontSize',17);
+hold off;
+if save_figures == true
+    saveas(fig4,'images/fig4.png')
+end
+
+fig5 = figure(5);
+plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
+plot(displacement4, concentration4,'-o','LineWidth',2);
+plot(displacement5, concentration5,'-o','LineWidth',2);
+legend("U=100 m/hr", "U=50 m/hr", "U=200 m/hr");
+xlabel("Position along reactor (m)");
+ylabel("Concentration (mol/L");
+title("Concentration at each position in the tank (Varying U)");
+set(gca,'FontSize',17);
+hold off;
+if save_figures == true
+    saveas(fig5,'images/fig5.png')
+end
+
+%% Reactor Solver Function
+function [xx, yy] = reactor_solver(D, U, k, L, cin, dx)
 % A function to solve the steady state reactor problem
 % Inputs:
 %   D: dispersion coefficient 
@@ -9,41 +105,92 @@ function v = reactor_solver(D, U, k, L, cin, dx)
 %   cin: concentration in the inflow
 %   dx: discretization of the length of the reactor
 % Outputs:
-%   z: solution output
+%   xx: xx is an (N+1) column vector of the node points
+%   yy: yy is an (N+1) column vector of the solution values
 
     a = 0;
     b = L;
+    N = L/dx;
+    
     function p = reactor_p_func(x)
-    p = U./D;
+    p = U./D.*(ones(size(x)));
     end
     function q = reactor_q_func(x)
-        q = k./D;
+        q = k./D.*(ones(size(x)));
     end
     function r = reactor_r_func(x)
         r = 0.*x;
     end
-
-    z = ODEBVP(@reactor_p_func, @reactor_q_func, @reactor_r_func, a, b,...
-            ga, gb, N);
+    function v = ghost_left_func1(x, h)
+        v = (-U/D)*2*h.*(ones(size(x)));
+    end
+    function v = ghost_left_func2(x, h)
+        v = 1.*(ones(size(x)));
+    end
+    function v = ghost_left_func_rhs(x, h)
+        v = (U/D)*2*h*cin.*(ones(size(x)));
+    end
+    function v = ghost_right_func1(x, h)
+        v = 1.*(ones(size(x)));
+    end
+    function v = ghost_right_func2(x, h)
+        v = 0.*(ones(size(x)));
+    end
+    function v = ghost_right_func_rhs(x, h)
+        v = 0.*(ones(size(x)));
+    end
+    z = ODEBVP_boundary(@reactor_p_func, @reactor_q_func, @reactor_r_func,... 
+        @ghost_left_func1, @ghost_left_func2, @ghost_left_func_rhs,...
+        @ghost_right_func1, @ghost_right_func2, @ghost_right_func_rhs,...
+        a,b,N);
+    
+    xx = z(:,1);
+    yy = z(:,2);
 end
 
-
-
-%% Embedded Functions
-function z = ODEBVP(p_func,q_func,r_func,a,b,ga,gb,N,varargin)
+%% Custom ODEBVP Solver Function
+function z = ODEBVP_boundary(p_func,q_func,r_func,...
+    ghost_left_func1, ghost_left_func2, ghost_left_func_rhs,...
+    ghost_right_func1, ghost_right_func2, ghost_right_func_rhs,...
+    a,b,N,varargin)
 % A program to solve the two point boundary value problem
 %   y''=p(x)y'+q(x)y+r(x),  a<x<b
 %   y(a)=g1,  y(b)=g2
+% 
+% Rather than take a boundary value, the boundary condition may be
+% formulated as an equation instead. When trying to apply the governing 
+% equation above to boundary nodes, "ghost" nodes are produced. You can 
+% eliminate the ghost nodes with the boundary condition function. This adds
+% extra values to the other nodes for that boundary computation. For
+% example the following is the general governing equation:
+%   -(1+h/2p(x=0))C_-1 + (2+h^2q(x=0))C_0 + (h/2p(x=0) - 1)C_1 = -h^2r(x=0)
+% And take the following as the boundary condition function
+%   c'(x = 0) = 0
+% With the finite difference, 
+%   C_1 - C_-1 = 0, C_1 = C_-1.
+% We can rewrite as C_-1 = C_1 + 0(C_0) + 0. Now we can replace the ghost
+% node C_-1 as a function of the other nodes C_1, C_0, and some constant
+% value. This results in three functions for the left boundary, and three
+% more functions for the right boundary. In this example, ghost_left_func2
+% = 1, ghost_left_func1 = ghost_left_func_rhs = 0, but they can be
+% arbitrary functions. 
+% 
+% Lastly, ghost functions can be dependent on both x (input) and h, as well
+% as any extra variables you desire (varargin).
+% 
 % Input
 %   p, q, r: coefficient functions 
+%   ghost_left_func1: left boundary function addition for the smaller node
+%   ghost_left_func2: left boundary function addition for the bigger node
+%   ghost_left_func_rhs: left boundary function for a constant value
+%   ghost_right_func1: right boundary function addition for the smaller node
+%   ghost_right_func2: right boundary function addition for the bigger node
+%   ghost_right_func_rhs: right boundary function for a constant value
 %   a, b: the end-points of the interval
-%   ga, gb: the prescribed function values at the end-points
 %   N: number of sub-intervals
 % Output
 %   z = [ xx yy ]: xx is an (N+1) column vector of the node points
 %                yy is an (N+1) column vector of the solution values
-% A sample call would be
-%   z=ODEBVP('p','q','r',a,b,ga,gb,100)
 % The user must provide m-files to define the functions p, q and r.
 % 
 % Other MATLAB program called: tridiag.m
@@ -56,31 +203,42 @@ xx = linspace(a,b,N1)';
 yy = zeros(N1,1);
 
 % Boundary conditions (at two endpoints)
-yy(1) = ga;
-yy(N1) = gb;
+% yy(1) = ga;
+% yy(N1) = gb;
 
 % Define the sub-diagonal avec, main diagonal bvec, superdiagonal cvec for
 % the tridiagonal system
 % Key point: Some of these functions may be zero-valued, but they still 
 % need to be passed as vectors rather than scalars.
-pp(2:N) = p_func(xx(2:N),varargin{:});
+% pp(2:N) = p_func(xx(2:N),varargin{:});
+% avec(2:N-1) = -1-(h/2)*pp(3:N);
+% bvec(1:N-1) = 2+h2*q_func(xx(2:N),varargin{:});
+% cvec(1:N-2) = -1+(h/2)*pp(2:N-1);
 
-avec(2:N-1) = -1-(h/2)*pp(3:N);
-bvec(1:N-1) = 2+h2*q_func(xx(2:N),varargin{:});
-cvec(1:N-2) = -1+(h/2)*pp(2:N-1);
+pp = p_func(xx, varargin{:});
+avec(2:N+1) = -1-(h/2)*pp(2:N+1);
+bvec(1:N+1) = 2+h2*q_func(xx, varargin{:});
+cvec(1:N)   = -1+(h/2)*pp(1:N);
+
+bvec(1) = bvec(1) + -(1+(h/2)*pp(1)).*ghost_left_func1(xx(1), h, varargin{:});
+cvec(1) = cvec(1) + -(1+(h/2)*pp(1)).*ghost_left_func2(xx(1), h, varargin{:});
+
+avec(N+1) = avec(N+1) + ((h/2)*pp(N+1) - 1).*ghost_right_func1(xx(N+1), h, varargin{:});
+bvec(N+1) = bvec(N+1) + ((h/2)*pp(N+1) - 1).*ghost_right_func2(xx(N+1), h, varargin{:});
 
 % Define the right hand side vector fvec
-fvec(1:N-1) = -h2*r_func(xx(2:N),varargin{:});
-
-fvec(1) = fvec(1)+(1+h*pp(2)/2)*ga;
-fvec(N-1) = fvec(N-1)+(1-h*pp(N)/2)*gb;
+fvec = -h2*r_func(xx,varargin{:});
+fvec(1)   = fvec(1)   + (1+(h/2)*pp(1)).*ghost_left_func_rhs(xx(1), h, varargin{:});
+fvec(N+1) = fvec(N+1) + -((h/2)*pp(N+1) - 1).*ghost_right_func_rhs(xx(N+1), h, varargin{:});
 
 % Solve the tridiagonal system
-yy(2:N) = tridiag(avec,bvec,cvec,fvec,N-1,0);
+yy = tridiag(avec,bvec,cvec,fvec,N+1,0);
 % Store output (independent variable xx and dependent variable yy)
 z = [xx'; yy']';
 
 end % end of function
+
+%% Embedded Functions
 function [x, lambda, delta, ier] = tridiag(l,d,u,b,n,iflag)
 
 % function [x, lambda, delta, ier] = tridiag(l,d,u,b,n,iflag)

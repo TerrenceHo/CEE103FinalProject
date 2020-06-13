@@ -25,7 +25,7 @@ U3 = 200;
 
 %% Plotting Concentration at each position
 % set this to false if you do not want to generate images
-save_figures = true;
+save_figures = false;
 
 fig1 = figure(1);
 plot(displacement1, concentration1,'-o','LineWidth',2); hold on;
